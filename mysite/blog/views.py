@@ -49,7 +49,6 @@ def post_share(request, post_id):
         # Form was submitted
         form = EmailPostForm(request.POST)
         if form.is_valid():
-            # Form fields passed validation
             cd = form.cleaned_data
             # TODO: Send email
         
