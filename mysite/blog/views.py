@@ -6,6 +6,8 @@ from django.core.mail import send_mail
 from django.views.generic import ListView
 from django.views.decorators.http import require_POST
 from .forms import EmailPostForm, CommentForm
+from taggit.models import Tag
+from django.db.models import Count
 
 class PostListView(ListView):
     """Alternative post list view using class-based views."""
@@ -14,9 +16,15 @@ class PostListView(ListView):
     paginate_by = 3
     template_name = 'blog/post/list.html'
 
-def post_list(request):
+def post_list(request, tag_slug=None):
     """List all published posts."""
     posts = Post.published.all()
+
+    # List by tag
+    tag = None
+    if tag_slug:
+        tag = get_object_or_404(Tag, slug=tag_slug)
+        posts = posts.filter(tags__in=[tag])
 
     # Pagination
     paginator = Paginator(posts, 3)
@@ -30,7 +38,7 @@ def post_list(request):
         # If the requested page is not an integer, return the first page of results
         posts = paginator.page(1)
 
-    return render(request, 'blog/post/list.html', {'posts': posts})
+    return render(request, 'blog/post/list.html', {'posts': posts, 'tag': tag})
 
 
 def post_detail(request, year, month, day, post):
@@ -48,7 +56,12 @@ def post_detail(request, year, month, day, post):
     comments = post.comments.filter(active=True)
     form = CommentForm()
 
-    return render(request, 'blog/post/detail.html', {'post': post, 'comments': comments, 'form': form})
+    # Similar Posts (based on tags)
+    post_tags_ids = post.tags.values_list('id', flat=True) # flat will give us a list of values instead of a list of tuples
+    similar_posts = Post.published.filter(tags__in=post_tags_ids).exclude(id=post.id) # Exclude current post
+    similar_posts = similar_posts.annotate(same_tags=Count('tags')).order_by('-same_tags', '-publish')[:4] # Only first 4
+
+    return render(request, 'blog/post/detail.html', {'post': post, 'comments': comments, 'form': form, 'similar_posts': similar_posts})
 
 
 def post_share(request, post_id):
