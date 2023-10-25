@@ -1,4 +1,5 @@
 {% extends "blog/base.html" %}
+{% load blog_tags %}
 
 {% block title %}{{ post.title }}{% endblock %}
 
@@ -22,7 +23,7 @@
 </p>
 
 <!-- Post Body -->
-{{ post.body|linebreaks }}
+{{ post.body|markdown }}
 
 <!-- Share link -->
 <p>
